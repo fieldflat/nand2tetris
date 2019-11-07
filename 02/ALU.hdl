@@ -27,20 +27,47 @@
 // if (out < 0) set ng = 1
 
 CHIP ALU {
-    IN  
-        x[16], y[16],  // 16-bit inputs        
-        zx, // zero the x input?
-        nx, // negate the x input?
-        zy, // zero the y input?
-        ny, // negate the y input?
-        f,  // compute out = x + y (if 1) or x & y (if 0)
-        no; // negate the out output?
+  IN  
+      x[16], y[16],  // 16-bit inputs        
+      zx, // zero the x input?
+      nx, // negate the x input?
+      zy, // zero the y input?
+      ny, // negate the y input?
+      f,  // compute out = x + y (if 1) or x & y (if 0)
+      no; // negate the out output?
 
-    OUT 
-        out[16], // 16-bit output
-        zr, // 1 if (out == 0), 0 otherwise
-        ng; // 1 if (out < 0),  0 otherwise
+  OUT 
+      out[16], // 16-bit output
+      zr, // 1 if (out == 0), 0 otherwise
+      ng; // 1 if (out < 0),  0 otherwise
 
-    PARTS:
-   // Put you code here:
+  PARTS:
+  // zxに関する処理
+  Mux16 (a=x, b=false, sel=zx, out=w1);
+  // zyに関する処理
+  Mux16 (a=y, b=false, sel=zy, out=w2);
+
+  // nxに関する処理
+  Not16 (in=w1, out=notw1);
+  Mux16 (a=w1, b=notw1, sel=nx, out=w3);
+
+  // nyに関する処理
+  Not16 (in=w2, out=notw2);
+  Mux16 (a=w2, b=notw2, sel=ny, out=w4);
+
+  // fに関する処理
+  And16 (a=w3, b=w4, out=xandy);
+  Add16 (a=w3, b=w4, out=addxy);
+  Mux16 (a=xandy, b=addxy, sel=f, out=w5);
+
+  // ngの出力 & noに関する処理
+  Not16 (in=w5, out=notw5);
+  Mux16 (a=w5, b=notw5, sel=no, out=out, out[0..7]=out0to7, out[8..15]=out8to15, out[15]=ng); 
+
+  // if (out == 0) set zr = 1
+  Or8Way (in=out0to7, out=or0to7);
+  Or8Way (in=out8to15, out=or8to15);
+  Or (a=or0to7, b=or8to15, out=or0to16);
+  Not (in=or0to16, out=zr);
+
 }
